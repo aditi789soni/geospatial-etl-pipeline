@@ -1,0 +1,67 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Geospatial Data artifacts (Do not commit binary rasters)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+*.tif
+*.tiff
+*.jp2
+*.nc
+*.hdf
+*.SAFE
+*.zip
+*.tar.gz
+
+# Database and docker volumes
+*.sqlite3
+pg_data/
+postgis_data/
+
+# Great Expectations & Testing
+.pytest_cache/
+.coverage
+htmlcov/
+great_expectations/uncommitted/
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Airflow
+airflow.cfg
+airflow.db
+airflow-webserver.pid

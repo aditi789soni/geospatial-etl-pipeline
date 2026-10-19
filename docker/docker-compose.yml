@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # PostGIS Spatial Database
+  postgis:
+    image: postgis/postgis:15-3.3
+    container_name: geospatial_postgis
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-geospatial_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Geospatial FastAPI Service
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: geospatial_api
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment:
+      - POSTGRES_HOST=postgis
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=geospatial_db
+      - ENVIRONMENT=production
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../data:/app/data
+    restart: unless-stopped
+
+  # Airflow Webserver
+  airflow-webserver:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: geospatial_airflow_webserver
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres@postgis:5432/geospatial_db
+      - AIRFLOW__WEBSERVER__SECRET_KEY=geospatial_super_secret_key_123
+      - PYTHONPATH=/app
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../dags:/app/dags
+      - ../src:/app/src
+      - ../data:/app/data
+    entrypoint: >
+      bash -c "airflow db init &&
+               airflow users create --username admin --firstname Geo --lastname Admin --role Admin --email admin@geo.org --password admin || true &&
+               airflow webserver"
+
+  # Airflow Scheduler
+  airflow-scheduler:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: geospatial_airflow_scheduler
+    depends_on:
+      airflow-webserver:
+        condition: service_started
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres@postgis:5432/geospatial_db
+      - PYTHONPATH=/app
+    volumes:
+      - ../dags:/app/dags
+      - ../src:/app/src
+      - ../data:/app/data
+    command: airflow scheduler
+    restart: unless-stopped
+
+volumes:
+  postgis_data:
